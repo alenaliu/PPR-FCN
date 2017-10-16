@@ -1,0 +1,167 @@
+name: "ResNet-50"
+
+input: "conv_new_1"
+input_shape {
+  dim: 1
+  dim: 1024
+  dim: 38
+  dim: 38
+}
+
+input: "sub_boxes"
+input_shape {
+  dim: 1
+  dim: 5
+}
+
+input: "obj_boxes"
+input_shape {
+  dim: 1
+  dim: 5
+}
+
+layer {
+    bottom: "conv_new_1"
+    top: "rfcn_sub_rel"
+    name: "rfcn_sub_rel"
+    type: "Convolution"
+    convolution_param {
+        num_output: 3430#70*(7^2) cls_num*(score_maps_size^2)
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+layer {
+    bottom: "conv_new_1"
+    top: "rfcn_obj_rel"
+    name: "rfcn_obj_rel"
+    type: "Convolution"
+    convolution_param {
+        num_output: 3430#70*(7^2) cls_num*(score_maps_size^2)
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+#--------------position sensitive RoI pooling--------------
+layer {
+    bottom: "rfcn_sub_rel"
+    bottom: "sub_boxes"
+    top: "psroipooled_sub_rois"
+    name: "psroipooled_sub_rois"
+    type: "PSROIPooling"
+    psroi_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 7
+    }
+}
+
+layer {
+    bottom: "psroipooled_sub_rois"
+    top: "sub_score"
+    name: "sub_score"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 7
+        stride: 7
+    }
+}
+
+layer {
+    bottom: "rfcn_obj_rel"
+    bottom: "obj_boxes"
+    top: "psroipooled_obj_rois"
+    name: "psroipooled_obj_rois"
+    type: "PSROIPooling"
+    psroi_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 7
+    }
+}
+
+layer {
+    bottom: "psroipooled_obj_rois"
+    top: "obj_score"
+    name: "obj_score"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 7
+        stride: 7
+    }
+}
+
+
+layer {
+  name: "sub_obj_score"
+  bottom: "sub_score"
+  bottom: "obj_score"
+  top: "sub_obj_score"
+  type: "Concat"
+  concat_param {
+    axis: 1
+  }
+}
+
+layer {
+  name: "relation"
+  type: "InnerProduct"
+  bottom: "sub_obj_score"
+  top: "relation"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 70
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "relation_prob"
+  type: "Softmax"
+  bottom: "relation"
+  top: "relation_prob"
+}
+

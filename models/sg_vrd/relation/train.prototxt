@@ -1,0 +1,117 @@
+name: "RelationModel"
+layer {
+  name: 'input-data'
+  type: 'Python'
+  top: 'classeme_s'
+  top: 'classeme_o'
+  top: 'label'
+  python_param {
+    module: 'vrd.layer'
+    layer: 'RelationDatalayer'
+    param_str: "'batch_size': 100"
+  }
+}
+layer 
+{
+  name: "classeme_diff"
+  type: "Eltwise"
+  bottom: "classeme_s"
+  bottom: "classeme_o"
+  top: "classeme_diff"
+  eltwise_param {
+    operation: SUM
+    coeff: 1
+    coeff: -1
+  }
+}
+
+layer {
+  name: "classeme_fc1"
+  type: "InnerProduct"
+  bottom: "classeme_diff"
+  top: "classeme_fc1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "classeme_fc1"
+  top: "classeme_fc1"
+}
+
+layer {
+  name: "classeme_fc2"
+  type: "InnerProduct"
+  bottom: "classeme_fc1"
+  top: "classeme_fc2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 300
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "relu2"
+  type: "ReLU"
+  bottom: "classeme_fc2"
+  top: "classeme_fc2"
+}
+
+
+layer {
+  name: "relation"
+  type: "InnerProduct"
+  bottom: "classeme_fc2"
+  top: "relation"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 70
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "relation"
+  bottom: "label"
+  top: "loss"
+}
+

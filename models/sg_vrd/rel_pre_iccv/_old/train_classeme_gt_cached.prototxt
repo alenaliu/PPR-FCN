@@ -1,0 +1,202 @@
+
+name: "ResNet-50"
+layer {
+  name: 'input-data'
+  type: 'Python'
+  top: 'conv_new_1'
+  top: 'sub_boxes'
+  top: 'obj_boxes'
+  top: 'labels'
+  top: 'rlp_labels'
+  #top: 'temperature'
+
+  python_param {
+    module: 'vrd.vr.layer_iccv_cached'
+    layer: 'ICCVDataLayerCached'
+    param_str: "'num_classes': 70"
+  }
+}
+
+layer {
+    bottom: "conv_new_1"
+    top: "rfcn_cls"
+    name: "rfcn_cls"
+    type: "Convolution"
+    convolution_param {
+        num_output: 4949#101*(7^2) cls_num*(score_maps_size^2)
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+#--------------position sensitive RoI pooling--------------
+layer {
+    bottom: "rfcn_cls"
+    bottom: "sub_boxes"
+    top: "psroipooled_sub_rois"
+    name: "psroipooled_sub_rois"
+    type: "PSROIPooling"
+    psroi_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 101 
+        group_size: 7
+    }
+}
+
+layer {
+    bottom: "psroipooled_sub_rois"
+    top: "sub_score"
+    name: "sub_score"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 7
+        stride: 7
+    }
+    
+    propagate_down: false
+}
+
+layer {
+    bottom: "rfcn_cls"
+    bottom: "obj_boxes"
+    top: "psroipooled_obj_rois"
+    name: "psroipooled_obj_rois"
+    type: "PSROIPooling"
+    psroi_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 101 
+        group_size: 7
+    }
+}
+
+layer {
+    bottom: "psroipooled_obj_rois"
+    top: "obj_score"
+    name: "obj_score"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 7
+        stride: 7
+    }
+
+}
+
+layer {
+  name: "sub_scaler"
+  type: "Scale"
+  bottom: "sub_score"
+  top: "sub_score_scaled"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  scale_param {
+    filler {
+      value: 0.5
+      }
+    bias_term: false
+  }
+}
+layer {
+  name: "obj_scaler"
+  type: "Scale"
+  bottom: "obj_score"
+  top: "obj_score_scaled"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  scale_param {
+    filler {
+      value: 0.5
+      }
+    bias_term: false
+  }
+}
+layer{
+   name: "sub_prob"
+   type: "Softmax"
+   bottom: "sub_score_scaled"
+   top: "sub_prob"
+}
+layer{
+   name: "obj_prob"
+   type: "Softmax"
+   bottom: "obj_score_scaled"
+   top: "obj_prob"
+}
+layer {
+  name: "sub_obj_score"
+  bottom: "sub_prob"
+  bottom: "obj_prob"
+  top: "sub_obj_score"
+  type: "Concat"
+  concat_param {
+    axis: 1
+  }
+    propagate_down: false
+    propagate_down: false
+}
+
+layer {
+  name: "relation"
+  type: "InnerProduct"
+  bottom: "sub_obj_score"
+  top: "relation"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 70
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "relation"
+  bottom: "labels"
+  top: "loss"
+}
+
+layer {
+  name: 'debug-data'
+  type: 'Python'
+  bottom:'labels'
+  bottom: 'relation'
+  bottom: 'sub_obj_score'
+  bottom: 'sub_prob'
+  bottom: 'obj_prob'
+  bottom: 'rlp_labels'
+  python_param {
+    module: 'vrd.vr.debug_layer'
+    layer: 'ICCVDebugLayer'
+  }
+}
+

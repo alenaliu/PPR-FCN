@@ -1,0 +1,43 @@
+name: "RelationModel"
+layer {
+  name: 'input-data'
+  type: 'Python'
+  top: 'visual'
+  top: 'label'
+  python_param {
+    module: 'vrd.layer_pre_concat'
+    layer: 'RelationDatalayer'
+    param_str: "'batch_size': 100"
+  }
+}
+layer {
+  name: "relation"
+  type: "InnerProduct"
+  bottom: "visual"
+  top: "relation"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 70
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "relation"
+  bottom: "label"
+  top: "loss"
+}
+

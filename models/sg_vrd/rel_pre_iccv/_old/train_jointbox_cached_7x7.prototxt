@@ -1,0 +1,154 @@
+name: "ResNet-50"
+layer {
+  name: 'input-data'
+  type: 'Python'
+  top: 'conv_new_1'
+  top: 'boxes'
+  top: 'labels'
+  # no gt boxes
+
+  python_param {
+    module: 'vrd.vr.layer_iccv_jointbox_cached'
+    layer: 'ICCVDataLayerJointboxCached'
+    param_str: "'num_classes': 70"
+  }
+}
+
+layer {
+    bottom: "conv_new_1"
+    top: "conv_new_2"
+    name: "conv_new_2"
+    type: "Convolution"
+    convolution_param {
+        num_output: 1024
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+layer {
+    bottom: "conv_new_2"
+    top: "conv_new_2"
+    name: "conv_new_2_relu"
+    type: "ReLU"
+}
+
+layer {
+    bottom: "conv_new_2"
+    top: "conv_new_3"
+    name: "conv_new_3"
+    type: "Convolution"
+    convolution_param {
+        num_output: 1024
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+layer {
+    bottom: "conv_new_3"
+    top: "conv_new_3"
+    name: "conv_new_3_relu"
+    type: "ReLU"
+}
+#--------------position sensitive RoI pooling--------------
+layer {
+    bottom: "conv_new_3"
+    top: "rfcn_rel"
+    name: "rfcn_rel"
+    type: "Convolution"
+    convolution_param {
+        num_output: 28000#70*(7^2) cls_num*(score_maps_size^2)
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+#--------------position sensitive RoI pooling--------------
+layer {
+    bottom: "rfcn_rel"
+    bottom: "boxes"
+    top: "psroipooled_rel_rois"
+    name: "psroipooled_rel_rois"
+    type: "PSROIPooling"
+    psroi_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 20
+    }
+}
+
+layer {
+    bottom: "psroipooled_rel_rois"
+    top: "relation"
+    name: "relation"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 20
+        stride: 20
+    }
+}
+
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "relation"
+  bottom: "labels"
+  top: "loss"
+}
+
+layer {
+  name: 'debug-data'
+  type: 'Python'
+  bottom:'labels'
+  bottom: 'relation'
+  python_param {
+    module: 'vrd.vr.debug_layer'
+    layer: 'ICCVDebugLayer'
+  }
+}

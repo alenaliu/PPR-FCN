@@ -1,0 +1,202 @@
+name: "ResNet-50"
+
+input: "conv_new_1"
+input_shape {
+  dim: 1
+  dim: 1024
+  dim: 38
+  dim: 38
+}
+
+input: "sub_boxes"
+input_shape {
+  dim: 1
+  dim: 5
+}
+
+input: "obj_boxes"
+input_shape {
+  dim: 1
+  dim: 5
+}
+input: "union_boxes"
+input_shape {
+  dim: 1
+  dim: 5
+}
+#------sub-------
+
+layer {
+  name: "sub_score"
+  type: "ROIPooling"
+  bottom: "conv_new_1"
+  bottom: "sub_boxes"
+  top: "sub_score"
+  roi_pooling_param {
+    pooled_w: 7
+    pooled_h: 7
+    spatial_scale: 0.0625 # 1/16
+  }
+}
+
+layer {
+  name: "obj_score"
+  type: "ROIPooling"
+  bottom: "conv_new_1"
+  bottom: "obj_boxes"
+  top: "obj_score"
+  roi_pooling_param {
+    pooled_w: 7
+    pooled_h: 7
+    spatial_scale: 0.0625 # 1/16
+  }
+}
+layer {
+	bottom: "sub_score"
+	top: "sub_score_pooled"
+	name: "sub_score_pooled"
+	type: "Pooling"
+	pooling_param {
+		kernel_size: 7
+		stride: 1
+		pool: AVE
+	}
+}
+layer {
+	bottom: "obj_score"
+	top: "obj_score_pooled"
+	name: "obj_score_pooled"
+	type: "Pooling"
+	pooling_param {
+		kernel_size: 7
+		stride: 1
+		pool: AVE
+	}
+}
+#------------merging--------------
+layer {
+  name: "sub_obj_score"
+  bottom: "sub_score_pooled"
+  bottom: "obj_score_pooled"
+  top: "sub_obj_score"
+  type: "Concat"
+  concat_param {
+    axis: 1
+  }
+}
+
+layer {
+  name: "fc1"
+  type: "InnerProduct"
+  bottom: "sub_obj_score"
+  top: "fc1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "fc1_relu"
+  type: "ReLU"
+  bottom: "fc1"
+  top: "fc1"
+}
+
+layer {
+    name: "fc1_drop"
+    type: "Dropout"
+    bottom: "fc1"
+    top: "fc1"
+    dropout_param {
+        dropout_ratio: 0.4
+    }
+}
+layer {
+  name: "fc2"
+  type: "InnerProduct"
+  bottom: "fc1"
+  top: "fc2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 512
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "fc2_relu"
+  type: "ReLU"
+  bottom: "fc2"
+  top: "fc2"
+}
+
+layer {
+    name: "fc2_drop"
+    type: "Dropout"
+    bottom: "fc2"
+    top: "fc2"
+    dropout_param {
+        dropout_ratio: 0.4
+    }
+}
+layer {
+  name: "relation"
+  type: "InnerProduct"
+  bottom: "fc2"
+  top: "relation"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output:70 
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "relation_prob"
+  type: "Softmax"
+  bottom: "relation"
+  top: "relation_prob"
+}
+
+
+layer {
+  name: 'debug-data'
+  type: 'Python'
+  bottom: 'relation'
+  bottom: 'union_boxes'
+  python_param {
+    module: 'vrd.vr.debug_layer'
+    layer: 'ICCVDebugLayer'
+  }
+}

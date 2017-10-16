@@ -1,0 +1,266 @@
+
+name: "RelationModel"
+layer {
+  name: 'input-data'
+  type: 'Python'
+  top: 'classeme'
+  top: 'visual'
+  top: 'location'
+  top: 'label'
+  python_param {
+    module: 'vrd.layer_all'
+    layer: 'RelationDatalayer'
+    param_str: "'batch_size': 100"
+  }
+}
+
+layer {
+  name: "classeme_fc1"
+  type: "InnerProduct"
+  bottom: "classeme"
+  top: "classeme_fc1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "classeme_fc1_relu"
+  type: "ReLU"
+  bottom: "classeme_fc1"
+  top: "classeme_fc1"
+}
+
+layer {
+    name: "classeme_fc1_drop"
+    type: "Dropout"
+    bottom: "classeme_fc1"
+    top: "classeme_fc1"
+    dropout_param {
+        dropout_ratio: 0.4
+    }
+}
+layer {
+  name: "classeme_fc2"
+  type: "InnerProduct"
+  bottom: "classeme_fc1"
+  top: "classeme_fc2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 300
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "classeme_fc2_relu"
+  type: "ReLU"
+  bottom: "classeme_fc2"
+  top: "classeme_fc2"
+}
+
+layer {
+    name: "classeme_fc2_drop"
+    type: "Dropout"
+    bottom: "classeme_fc2"
+    top: "classeme_fc2"
+    dropout_param {
+        dropout_ratio: 0.4
+    }
+}
+layer {
+  name: "visual_fc1"
+  type: "InnerProduct"
+  bottom: "visual"
+  top: "visual_fc1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 400
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "visual_fc1_relu"
+  type: "ReLU"
+  bottom: "visual_fc1"
+  top: "visual_fc1"
+}
+
+layer {
+    name: "visual_fc1_drop"
+    type: "Dropout"
+    bottom: "visual_fc1"
+    top: "visual_fc1"
+    dropout_param {
+        dropout_ratio: 0.4
+    }
+}
+layer {
+  name: "visual_fc2"
+  type: "InnerProduct"
+  bottom: "visual_fc1"
+  top: "visual_fc2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 150
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "visual_fc2_relu"
+  type: "ReLU"
+  bottom: "visual_fc2"
+  top: "visual_fc2"
+}
+
+layer {
+    name: "visual_fc2_drop"
+    type: "Dropout"
+    bottom: "visual_fc2"
+    top: "visual_fc2"
+    dropout_param {
+        dropout_ratio: 0.4
+    }
+}
+layer {
+  name: "location_fc1"
+  type: "InnerProduct"
+  bottom: "location"
+  top: "location_fc1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 20
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "location_fc1_relu"
+  type: "ReLU"
+  bottom: "location_fc1"
+  top: "location_fc1"
+}
+
+layer {
+  name: "location_fc2"
+  type: "InnerProduct"
+  bottom: "location_fc1"
+  top: "location_fc2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 10
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "location_fc2_relu"
+  type: "ReLU"
+  bottom: "location_fc2"
+  top: "location_fc2"
+}
+layer {
+  name: "features"
+  bottom: "classeme_fc2"
+  bottom: "visual_fc2"
+  bottom: "location_fc2"
+  top: "features"
+  type: "Concat"
+  concat_param {
+    axis: 1
+  }
+}
+layer {
+  name: "relation"
+  type: "InnerProduct"
+  bottom: "features"
+  top: "relation"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 70
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "relation"
+  bottom: "label"
+  top: "loss"
+}
+

@@ -1,0 +1,153 @@
+name: "ResNet-50"
+input: "conv_new_1"
+input_shape {
+  dim: 1
+  dim: 1024 
+  dim: 224
+  dim: 224
+}
+
+input: "boxes"
+input_shape {
+  dim: 1
+  dim: 5
+}
+
+layer {
+    bottom: "conv_new_1"
+    top: "conv_new_2"
+    name: "conv_new_2"
+    type: "Convolution"
+    convolution_param {
+        num_output: 2048
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+layer {
+    bottom: "conv_new_2"
+    top: "conv_new_2"
+    name: "conv_new_2_relu"
+    type: "ReLU"
+}
+
+layer {
+    bottom: "conv_new_2"
+    top: "conv_new_3"
+    name: "conv_new_3"
+    type: "Convolution"
+    convolution_param {
+        num_output: 2048
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+layer {
+    bottom: "conv_new_3"
+    top: "conv_new_3"
+    name: "conv_new_3_relu"
+    type: "ReLU"
+}
+#--------------position sensitive RoI pooling--------------
+layer {
+    bottom: "conv_new_3"
+    top: "rfcn_rel"
+    name: "rfcn_rel"
+    type: "Convolution"
+    convolution_param {
+        num_output: 630#70*(7^2) cls_num*(score_maps_size^2)
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+#--------------position sensitive RoI pooling--------------
+layer {
+    bottom: "rfcn_rel"
+    bottom: "boxes"
+    top: "psroipooled_rel_rois"
+    name: "psroipooled_rel_rois"
+    type: "PSROIPooling"
+    psroi_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 3
+    }
+}
+
+layer {
+    bottom: "psroipooled_rel_rois"
+    top: "relation"
+    name: "relation"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 3
+        stride: 3
+    }
+}
+
+layer {
+  name: "relation_prob"
+  type: "Softmax"
+  bottom: "relation"
+  top: "relation_prob"
+}
+
+layer {
+  name: 'debug-data'
+  type: 'Python'
+  bottom: 'relation'
+  bottom: 'relation_prob'
+  python_param {
+    module: 'vrd.vr.debug_layer'
+    layer: 'ICCVDebugLayer'
+  }
+}
+

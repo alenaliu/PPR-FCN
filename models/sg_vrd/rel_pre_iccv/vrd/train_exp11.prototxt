@@ -1,0 +1,214 @@
+# try binary log loss
+name: "ResNet-50"
+layer {
+  name: 'input-data'
+  type: 'Python'
+  top: 'conv_new_1'
+  top: 'sub_boxes'
+  top: 'obj_boxes'
+  top: 'union_boxes'
+  top: 'labels_v'
+  top: 'labels_v_rev'
+  # no gt boxes
+
+  python_param {
+    module: 'vrd.vr.layer_iccv_context_cached_binarylog'
+    layer: 'ICCVDataLayerContextCachedBinaryLog'
+    param_str: "'num_classes': 70"
+  }
+}
+
+
+#------sub-------
+layer {
+    bottom: "conv_new_1"
+    top: "rfcn_sub_rel"
+    name: "rfcn_sub_rel"
+    type: "Convolution"
+    convolution_param {
+        num_output: 630#70*(7^2) cls_num*(score_maps_size^2)
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+layer {
+    bottom: "rfcn_sub_rel"
+    bottom: "union_boxes"
+    bottom: "sub_boxes"
+    top: "psroipooled_sub_rois"
+    name: "psroipooled_sub_rois"
+    type: "PSROIContextPooling"
+    psroi_context_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 3
+    }
+}
+
+
+#------obj-------
+layer {
+    bottom: "conv_new_1"
+    top: "rfcn_obj_rel"
+    name: "rfcn_obj_rel"
+    type: "Convolution"
+    convolution_param {
+        num_output: 630#70*(7^2) cls_num*(score_maps_size^2)
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+layer {
+    bottom: "rfcn_obj_rel"
+    bottom: "union_boxes"
+    bottom: "obj_boxes"
+    top: "psroipooled_obj_rois"
+    name: "psroipooled_obj_rois"
+    type: "PSROIContextPooling"
+    psroi_context_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 3
+    }
+}
+
+#------------merging--------------
+layer {
+  name: "sub_obj_score"
+  bottom: "psroipooled_sub_rois"
+  bottom: "psroipooled_obj_rois"
+  top: "sub_obj_score"
+    type: "Concat"
+  concat_param {
+    axis: 1
+  }
+}
+
+
+layer {
+    bottom: "sub_obj_score"
+    top: "relation"
+    name: "relation"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 3
+        stride: 3
+    }
+}
+layer {
+  name: "relation_sigmoid"
+  type: "Sigmoid"
+  bottom: "relation"
+  top: "relation_sigmoid"
+}
+#-------------reversed
+layer {
+    bottom: "rfcn_sub_rel"
+    bottom: "union_boxes"
+    bottom: "obj_boxes"
+    top: "psroipooled_sub_rois_rev"
+    name: "psroipooled_sub_rois"
+    type: "PSROIContextPooling"
+    psroi_context_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 3
+    }
+}
+layer {
+    bottom: "rfcn_obj_rel"
+    bottom: "union_boxes"
+    bottom: "sub_boxes"
+    top: "psroipooled_obj_rois_rev"
+    name: "psroipooled_obj_rois_rev"
+    type: "PSROIContextPooling"
+    psroi_context_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 3
+    }
+}
+
+layer {
+  name: "sub_obj_score_rev"
+  bottom: "psroipooled_sub_rois_rev"
+  bottom: "psroipooled_obj_rois_rev"
+  top: "sub_obj_score_rev"
+    type: "Concat"
+  concat_param {
+    axis: 1
+  }
+}
+
+
+layer {
+    bottom: "sub_obj_score_rev"
+    top: "relation_rev"
+    name: "relation_rev"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 3
+        stride: 3
+    }
+}
+layer {
+  name: "relation_sigmoid"
+  type: "Sigmoid"
+  bottom: "relation"
+  top: "relation_sigmoid"
+}
+
+layer {
+   name: "loss"
+   type: "BinaryLogLoss"
+   bottom: "relation"
+   bottom: "labels_v"
+   top: "loss"
+   loss_weight: 1
+   propagate_down: true
+   propagate_down: false
+}
+
+layer {
+   name: "loss_rev"
+   type: "BinaryLogLoss"
+   bottom: "relation_rev"
+   bottom: "labels_v_rev"
+   top: "loss"
+   loss_weight: 1
+   propagate_down: true
+   propagate_down: false
+}
+

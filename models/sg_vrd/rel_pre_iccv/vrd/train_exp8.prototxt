@@ -1,0 +1,269 @@
+# try with 12x12 
+# remove union lane
+name: "ResNet-50"
+layer {
+  name: 'input-data'
+  type: 'Python'
+  top: 'conv_new_1'
+  top: 'sub_boxes'
+  top: 'obj_boxes'
+  top: 'union_boxes'
+  top: 'labels'
+  # no gt boxes
+
+  python_param {
+    module: 'vrd.vr.layer_iccv_context_cached'
+    layer: 'ICCVDataLayerContextCached'
+    param_str: "'num_classes': 70"
+  }
+}
+#------sub-------
+layer {
+    bottom: "conv_new_1"
+    top: "sub_conv_new_2"
+    name: "sub_conv_new_2"
+    type: "Convolution"
+    convolution_param {
+        num_output: 1024
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+layer {
+    bottom: "sub_conv_new_2"
+    top: "sub_conv_new_2"
+    name: "sub_conv_new_2_relu"
+    type: "ReLU"
+}
+
+layer {
+    bottom: "sub_conv_new_2"
+    top: "sub_conv_new_3"
+    name: "sub_conv_new_3"
+    type: "Convolution"
+    convolution_param {
+        num_output: 1024
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+layer {
+    bottom: "sub_conv_new_3"
+    top: "sub_conv_new_3"
+    name: "sub_conv_new_3_relu"
+    type: "ReLU"
+}
+layer {
+    bottom: "sub_conv_new_3"
+    top: "rfcn_sub_rel"
+    name: "rfcn_sub_rel"
+    type: "Convolution"
+    convolution_param {
+        num_output: 10080#70*(7^2) cls_num*(score_maps_size^2)
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+layer {
+    bottom: "rfcn_sub_rel"
+    bottom: "union_boxes"
+    bottom: "sub_boxes"
+    top: "psroipooled_sub_rois"
+    name: "psroipooled_sub_rois"
+    type: "PSROIContextPooling"
+    psroi_context_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 12
+    }
+}
+
+
+#------obj-------
+layer {
+    bottom: "conv_new_1"
+    top: "obj_conv_new_2"
+    name: "obj_conv_new_2"
+    type: "Convolution"
+    convolution_param {
+        num_output: 1024
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+layer {
+    bottom: "obj_conv_new_2"
+    top: "obj_conv_new_2"
+    name: "obj_conv_new_2_relu"
+    type: "ReLU"
+}
+
+layer {
+    bottom: "obj_conv_new_2"
+    top: "obj_conv_new_3"
+    name: "obj_conv_new_3"
+    type: "Convolution"
+    convolution_param {
+        num_output: 1024
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+
+layer {
+    bottom: "obj_conv_new_3"
+    top: "obj_conv_new_3"
+    name: "obj_conv_new_3_relu"
+    type: "ReLU"
+}
+
+
+layer {
+    bottom: "obj_conv_new_3"
+    top: "rfcn_obj_rel"
+    name: "rfcn_obj_rel"
+    type: "Convolution"
+    convolution_param {
+        num_output: 10080#70*(7^2) cls_num*(score_maps_size^2)
+        kernel_size: 1
+        pad: 0
+        weight_filler {
+            type: "gaussian"
+            std: 0.01
+        }
+        bias_filler {
+            type: "constant"
+            value: 0
+        }
+    }
+
+    param {
+        lr_mult: 1.0
+    }
+    param {
+        lr_mult: 2.0
+    }
+}
+layer {
+    bottom: "rfcn_obj_rel"
+    bottom: "union_boxes"
+    bottom: "obj_boxes"
+    top: "psroipooled_obj_rois"
+    name: "psroipooled_obj_rois"
+    type: "PSROIContextPooling"
+    psroi_context_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 70
+        group_size: 12
+    }
+}
+
+#------------merging--------------
+
+layer {
+  name: "sub_obj_score"
+  bottom: "psroipooled_sub_rois"
+  bottom: "psroipooled_obj_rois"
+  top: "sub_obj_score"
+  type: "Eltwise"
+
+}
+layer {
+    bottom: "sub_obj_score"
+    top: "relation"
+    name: "relation"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 12
+        stride: 12
+    }
+}
+
+
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "relation"
+  bottom: "labels"
+  top: "loss"
+}
+

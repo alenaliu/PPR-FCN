@@ -1,0 +1,180 @@
+name: "RelationModel"
+
+input: "classeme_s"
+input_shape {
+  dim: 1
+  dim: 101
+}
+input: "classeme_o"
+input_shape {
+  dim: 1
+  dim: 101
+}
+
+input: "location_s"
+input_shape {
+  dim: 1
+  dim:4
+}
+
+input: "location_o"
+input_shape {
+  dim: 1
+  dim:4
+}
+
+layer {
+  name: "classeme_fc1"
+  type: "InnerProduct"
+  bottom: "classeme"
+  top: "classeme_fc1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "classeme_fc1"
+  top: "classeme_fc1"
+}
+
+layer {
+  name: "classeme_fc2"
+  type: "InnerProduct"
+  bottom: "classeme_fc1"
+  top: "classeme_fc2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 300
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "relu2"
+  type: "ReLU"
+  bottom: "classeme_fc2"
+  top: "classeme_fc2"
+}
+layer {
+  name: "location_fc1"
+  type: "InnerProduct"
+  bottom: "location"
+  top: "location_fc1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 20
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "location_fc1"
+  top: "location_fc1"
+}
+
+layer {
+  name: "location_fc2"
+  type: "InnerProduct"
+  bottom: "location_fc1"
+  top: "location_fc2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 10
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+layer {
+  name: "relu2"
+  type: "ReLU"
+  bottom: "location_fc2"
+  top: "location_fc2"
+}
+layer {
+  name: "features"
+  bottom: "location_fc2"
+  bottom: "classeme_fc2"
+  top: "features"
+  type: "Concat"
+  concat_param {
+    axis: 1
+  }
+}
+layer {
+  name: "relation"
+  type: "InnerProduct"
+  bottom: "features"
+  top: "relation"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 70
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+
+
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "relation"
+  bottom: "label"
+  top: "loss"
+}
+

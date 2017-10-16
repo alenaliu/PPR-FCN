@@ -1,0 +1,13 @@
+4071468982_fd438e9c83_b,glasses,monitor
+6653105297_3557d439bf_b,clock
+8315618856_fafc261360_b,bus
+7714241214_e0cc0d3c72_b,person
+4305290071_fd01a37cf7_b,glasses
+3766609982_7008d5084f_b
+246934041_1029ed3032_b.jpg
+246934041_1029ed3032_b.jpg,missing person
+246934041_1029ed3032_b.jpg,plane
+
+246934041_1029ed3032_b.jpg,missing glasses
+data/sg_vrd_2016/Data/sg_test_images/37848607_cb4c8d84f2_b.jpg,watch
+data/sg_vrd_2016/Data/sg_test_images/6604207041_3a075b031d_b.jpg,car

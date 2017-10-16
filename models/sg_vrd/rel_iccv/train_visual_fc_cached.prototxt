@@ -1,0 +1,202 @@
+name: "ResNet-50"
+layer {
+  name: 'input-data'
+  type: 'Python'
+  top: 'conv_new_1'
+  top: 'sub_boxes'
+  top: 'obj_boxes'
+  top: 'labels'
+  # no gt boxes
+
+  python_param {
+    module: 'vrd.vr.layer_iccv_sem_cached'
+    layer: 'ICCVDataLayerSemCached'
+    param_str: "'num_classes': 70"
+  }
+}
+layer {
+  name: "sub_pool"
+  type: "ROIPooling"
+  bottom: "conv_new_1"
+  bottom: "sub_boxes"
+  top: "sub_pool"
+  roi_pooling_param {
+    pooled_w: 7
+    pooled_h: 7
+    spatial_scale: 0.0625 # 1/16
+  }
+}
+
+layer {
+    bottom: "sub_pool"
+    top: "sub_score"
+    name: "sub_score"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 7
+        stride: 7
+    }
+}
+
+layer {
+  name: "obj_pool"
+  type: "ROIPooling"
+  bottom: "conv_new_1"
+  bottom: "obj_boxes"
+  top: "obj_pool"
+  roi_pooling_param {
+    pooled_w: 7
+    pooled_h: 7
+    spatial_scale: 0.0625 # 1/16
+  }
+}
+
+layer {
+    bottom: "obj_pool"
+    top: "obj_score"
+    name: "obj_score"
+    type: "Pooling"
+    pooling_param {
+        pool: AVE
+        kernel_size: 7
+        stride: 7
+    }
+}
+
+
+layer {
+  name: "sub_fc7"
+  type: "InnerProduct"
+  bottom: "sub_score"
+  top: "sub_fc7"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 4096
+
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "sub_relu7"
+  type: "ReLU"
+  bottom: "sub_fc7"
+  top: "sub_fc7"
+}
+layer {
+  name: "sub_drop7"
+  type: "Dropout"
+  bottom: "sub_fc7"
+  top: "sub_fc7"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+
+layer {
+  name: "obj_fc7"
+  type: "InnerProduct"
+  bottom: "obj_score"
+  top: "obj_fc7"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 4096
+
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "obj_relu7"
+  type: "ReLU"
+  bottom: "obj_fc7"
+  top: "obj_fc7"
+}
+layer {
+  name: "obj_drop7"
+  type: "Dropout"
+  bottom: "obj_fc7"
+  top: "obj_fc7"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+
+layer {
+  name: "fc_concat"
+  bottom: "sub_fc7"
+  bottom: "obj_fc7"
+  top: "sub_obj_fc7"
+  type: "Concat"
+  concat_param {
+    axis: 1
+  }
+}
+
+
+layer {
+  name: "relation"
+  type: "InnerProduct"
+  bottom: "sub_obj_fc7"
+  top: "relation"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 70
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "relation"
+  bottom: "labels"
+  top: "loss"
+}
+
+layer {
+  name: 'debug-data'
+  type: 'Python'
+  bottom:'labels'
+  bottom: 'relation'
+  bottom: 'sub_score'
+  bottom: 'obj_score'
+  bottom: 'sub_obj_fc7'
+  python_param {
+    module: 'vrd.vr.debug_layer'
+    layer: 'ICCVDebugLayer'
+  }
+}
+
