@@ -3,11 +3,23 @@
 
 
 ### Dependencies
-This code is built on top of R-FCN. Please carefully read through [py-R-FCN](https://github.com/YuwenXiong/py-R-FCN) and make sure R-FCN can run within your enviornment. 
+This code is built on top of R-FCN. Please carefully read through [py-R-FCN](https://github.com/YuwenXiong/py-R-FCN) and make sure py-R-FCN can run within your enviornment. 
 Note: The evaluation scripts of our model are written in MATLAB. 
 
 ### Dataset/models dependencies
 As discussed in the paper, we used VG and VRD as our two datasets. They can be found here: [VG](http://visualgenome.org/) and [VRD](http://cs.stanford.edu/people/ranjaykrishna/vrd/). 
+
+Certain models are used for training. Please review the readme file under ./data
+
+### Usage
+#### Training
+Prior to training, go to ./lib and modify zl_config.py. Change the file paths to your correct paths.
+
+Then, simply call wsd.sh, vg.sh, vrd.sh, vrd_cls_aware.sh and subsequence batch files under the root directory, by following the steps discussed in the paper.
+
+#### Evaluate
+We provide evaluation in MATLAB. Navigate to ./_evaluation folder. Then under/vg(or /vr). Run zl_eval.m to get the evaluation result.
+
 ### License
 
 PPR-FCN is released under the MIT License (refer to the LICENSE file for details).
